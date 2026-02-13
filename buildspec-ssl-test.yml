@@ -9,13 +9,14 @@ phases:
       - echo "Installing Nuitka"
       - python -m pip install --upgrade pip
       - pip install nuitka
+      - pip install keyring certifi
       
   pre_build:
     commands:
       - echo "Creating minimal Python script for compilation"
-      - mkdir -p source/credential_provider
+      - New-Item -ItemType Directory -Force -Path source\credential_provider
       - |
-        cat > source/credential_provider/__main__.py << 'EOF'
+        @"
         import sys
         import keyring
         import certifi
@@ -26,30 +27,29 @@ phases:
         
         if __name__ == "__main__":
             sys.exit(main())
-        EOF
+        "@ | Out-File -FilePath source\credential_provider\__main__.py -Encoding utf8
       
   build:
     commands:
       - echo "Starting Nuitka compilation - this should trigger the SSL error"
       - |
-        python -m nuitka \
-          --standalone \
-          --onefile \
-          --assume-yes-for-downloads \
-          --company-name="Claude Code" \
-          --product-name="Claude Code Credential Process" \
-          --file-version="1.0.0.0" \
-          --product-version="1.0.0.0" \
-          --windows-file-description="AWS Credential Process for Claude Code" \
-          --include-package=keyring.backends \
-          --include-package=certifi \
-          --output-filename=credential-process-windows.exe \
-          --output-dir=. \
-          --remove-output \
-          source/credential_provider/__main__.py
+        python -m nuitka `
+          --standalone `
+          --onefile `
+          --assume-yes-for-downloads `
+          --company-name="Claude Code" `
+          --product-name="Claude Code Credential Process" `
+          --file-version="1.0.0.0" `
+          --product-version="1.0.0.0" `
+          --windows-file-description="AWS Credential Process for Claude Code" `
+          --include-package=keyring.backends `
+          --include-package=certifi `
+          --output-filename=credential-process-windows.exe `
+          --output-dir=. `
+          --remove-output `
+          source\credential_provider\__main__.py
 
 artifacts:
   files:
     - credential-process-windows.exe
   name: windows-build-artifacts
-
