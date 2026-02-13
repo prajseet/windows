@@ -1,8 +1,55 @@
+
 version: 0.2
 
 phases:
+  install:
+    runtime-versions:
+      python: 3.12
+    commands:
+      - echo "Installing Nuitka"
+      - python -m pip install --upgrade pip
+      - pip install nuitka
+      
+  pre_build:
+    commands:
+      - echo "Creating minimal Python script for compilation"
+      - mkdir -p source/credential_provider
+      - |
+        cat > source/credential_provider/__main__.py << 'EOF'
+        import sys
+        import keyring
+        import certifi
+        
+        def main():
+            print("Hello from credential process")
+            return 0
+        
+        if __name__ == "__main__":
+            sys.exit(main())
+        EOF
+      
   build:
     commands:
-      - pip show certifi
-      - python -c "import ssl; print(ssl.get_default_verify_paths())"
-      - python -c "import urllib.request; urllib.request.urlopen('https://github.com/brechtsanders/winlibs_mingw/releases/download/14.2.0posix-19.1.1-12.0.0-msvcrt-r2/winlibs-x86_64-posix-seh-gcc-14.2.0-llvm-19.1.1-mingw-w64msvcrt-12.0.0-r2.zip', timeout=10)"
+      - echo "Starting Nuitka compilation - this should trigger the SSL error"
+      - |
+        python -m nuitka \
+          --standalone \
+          --onefile \
+          --assume-yes-for-downloads \
+          --company-name="Claude Code" \
+          --product-name="Claude Code Credential Process" \
+          --file-version="1.0.0.0" \
+          --product-version="1.0.0.0" \
+          --windows-file-description="AWS Credential Process for Claude Code" \
+          --include-package=keyring.backends \
+          --include-package=certifi \
+          --output-filename=credential-process-windows.exe \
+          --output-dir=. \
+          --remove-output \
+          source/credential_provider/__main__.py
+
+artifacts:
+  files:
+    - credential-process-windows.exe
+  name: windows-build-artifacts
+
